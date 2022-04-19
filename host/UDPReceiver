@@ -11,7 +11,7 @@ char keys[ROW_NUM][COL_NUM] = {
   {'7', '8', '9'}
 };
 byte rowPins[ROW_NUM] = {16, 5, 4};
-byte colPins[COL_NUM] = {14, 12, 13};
+byte colPins[COL_NUM] = {0, 2, 14};
 
 SimpleKeypad kp1((char*)keys, rowPins, colPins, ROW_NUM, COL_NUM);
 
@@ -34,6 +34,7 @@ char packet[256];
 char reply[]="uugabuuga received!"; 
 
 void setup() {
+  bool pause = false;
   WiFi.config(local_IP, gateway, subnet);
   delay(100);
   Serial.begin(115200);
@@ -54,30 +55,35 @@ void testAndSend(char key){
   UDP.beginPacket(udpIP, 161);
   UDP.write(key);
   UDP.endPacket();
+  pause = true;
 }
-
 void readForPacket(){
   int packetSize = UDP.parsePacket();
   if (packetSize) {
-  Serial.print("Received packet! Size: ");
-  Serial.println(packetSize);
-  int len = UDP.read(packet, 255);
+    Serial.print("Received packet! Size: ");
+    Serial.println(packetSize);
+    int len = UDP.read(packet, 255);
   if (len > 0)
   {
     packet[len] = '\0';
   }
   Serial.print("Packet received: ");
   Serial.println(packet);
+  pause = false;
 }
 }
 
 void loop() {
   //delay(2000);
-  readForPacket();
-  char key = kp1.getKey();
-  if(key){
-    Serial.println(key);
-    testAndSend(key);
+  while (pause == true){
+    readForPacket();
+  }
+  while( pause == false){
+    char key = kp1.getKey();
+    if(key){
+      Serial.println(key);
+      testAndSend(key);
+    }
   }
   /*UDP.beginPacket(udpIP, 161);
   UDP.write(reply);
