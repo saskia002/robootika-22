@@ -5,6 +5,11 @@
 const byte ROW_NUM = 3;
 const byte COL_NUM = 3;
 
+String playerSelf[9];
+String playerOther[9];
+
+int bannedNumbers[9];
+
 char keys[ROW_NUM][COL_NUM] = {
   {'1', '2', '3'},
   {'4', '5', '6'},
@@ -30,11 +35,13 @@ WiFiUDP UDP;
 
 const char *ssid = "trips-traps-trull vork";
 const char *pass = "123456789";
-char packet[256];
+char packet[255];
 char reply[]="uugabuuga received!"; 
+bool pause = false;
+
+
 
 void setup() {
-  bool pause = false;
   WiFi.config(local_IP, gateway, subnet);
   delay(100);
   Serial.begin(115200);
@@ -52,24 +59,42 @@ void setup() {
 }
 
 void testAndSend(char key){
+  
   UDP.beginPacket(udpIP, 161);
   UDP.write(key);
   UDP.endPacket();
+  String newKey = (String)key;
+  int newVal = newKey.toInt();
+  addToBanned(newVal);
   pause = true;
+}
+
+void addToBanned(int value){
+  bannedNumbers[value-1] = value;
+  for(int i=0; i<9; i++){
+    Serial.print(bannedNumbers[i]);
+  }
 }
 void readForPacket(){
   int packetSize = UDP.parsePacket();
   if (packetSize) {
     Serial.print("Received packet! Size: ");
     Serial.println(packetSize);
+    pause = false;
     int len = UDP.read(packet, 255);
   if (len > 0)
   {
     packet[len] = '\0';
   }
+  String muutuja = (String)packet;
+  if(muutuja == "7"){
+    Serial.println("Saine seitsme");
+  }
+  addToBanned(muutuja.toInt());
   Serial.print("Packet received: ");
-  Serial.println(packet);
-  pause = false;
+  Serial.print(muutuja);
+  Serial.print("!");
+  Serial.println(len);
 }
 }
 
@@ -78,34 +103,14 @@ void loop() {
   while (pause == true){
     readForPacket();
   }
-  while( pause == false){
+  while(pause == false){
     char key = kp1.getKey();
+    delay(50);
     if(key){
       Serial.println(key);
       testAndSend(key);
     }
   }
-  /*UDP.beginPacket(udpIP, 161);
-  UDP.write(reply);
-  UDP.endPacket();
-  int packetSize = UDP.parsePacket();
-  if (packetSize) {
-  Serial.print("Received packet! Size: ");
-  Serial.println(packetSize);
-  int len = UDP.read(packet, 255);
-  if (len > 0)
-  {
-    packet[len] = '\0';
-  }
-  Serial.print("Packet received: ");
-  Serial.println(packet);
-
-  // Send return packet
-  UDP.beginPacket(udpIP, 161);
-  UDP.write(reply);
-  UDP.endPacket();
-
-  }*/
 }
 
 
