@@ -1,6 +1,14 @@
 #include <ESP8266WiFi.h>
 #include <WiFiUdp.h>
 #include <SimpleKeypad.h>
+#include <Adafruit_NeoPixel.h>
+#ifdef __AVR__
+#include <avr/power.h>
+#endif
+
+#define PIN 15 
+#define NUMPIXELS 9 
+Adafruit_NeoPixel pixels(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
 
 const byte ROW_NUM = 3;
 const byte COL_NUM = 3;
@@ -56,10 +64,16 @@ void setup() {
   Serial.print("Listening on UDP port ");
   Serial.println(UDP.remotePort());
 
+
+  #if defined(__AVR_ATtiny85__) && (F_CPU == 16000000)
+    clock_prescale_set(clock_div_1);
+  #endif
+  pixels.begin(); // INITIALIZE NeoPixel strip object (REQUIRED)
+  pixels.setBrightness(100);
+
 }
 
 void testAndSend(char key){
-  
   UDP.beginPacket(udpIP, 161);
   UDP.write(key);
   UDP.endPacket();
@@ -68,6 +82,24 @@ void testAndSend(char key){
   addToBanned(newVal);
   pause = true;
 }
+void inBannedNumbers(char k){
+  
+  String newK = (String)k;
+  int test = newK.toInt();
+  int inArray = 0;
+  for(int i=0; i < 9; i++){
+      if (bannedNumbers[i] == test){
+        Serial.print("Number is banned");
+        inArray++;
+      }
+    }
+    Serial.print(inArray);
+    if(inArray <1){
+      testAndSend(k);
+    }
+    
+}
+
 
 void addToBanned(int value){
   bannedNumbers[value-1] = value;
@@ -75,6 +107,20 @@ void addToBanned(int value){
     Serial.print(bannedNumbers[i]);
   }
 }
+
+void turnOnLed(int nLed){
+  
+    // pixels.Color() takes RGB values, from 0,0,0 up to 255,255,255
+    // Here we're using a moderately bright green color:
+    
+    pixels.setPixelColor(nLed-1, pixels.Color(150, 150, 150));
+
+    pixels.show();   // Send the updated pixel colors to the hardware.
+
+    delay(500); // Pause before next pass through loop
+  
+}
+
 void readForPacket(){
   int packetSize = UDP.parsePacket();
   if (packetSize) {
@@ -93,6 +139,7 @@ void readForPacket(){
   addToBanned(muutuja.toInt());
   Serial.print("Packet received: ");
   Serial.print(muutuja);
+  turnOnLed(muutuja.toInt());
   Serial.print("!");
   Serial.println(len);
 }
@@ -108,7 +155,7 @@ void loop() {
     delay(50);
     if(key){
       Serial.println(key);
-      testAndSend(key);
+      inBannedNumbers(key);
     }
   }
 }
